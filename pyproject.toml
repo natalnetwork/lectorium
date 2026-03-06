@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lectorium"
+version = "0.1.0"
+description = "Self-hosted EPUB audiobook reader with browser TTS"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+  {name = "Sebastian Schwiebert"}
+]
+
+dependencies = [
+  "fastapi",
+  "uvicorn[standard]",
+  "jinja2",
+  "ebooklib",
+  "python-multipart"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "ruff",
+  "httpx"
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["backend*"]
