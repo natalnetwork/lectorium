@@ -1,6 +1,6 @@
 # Lectorium
 
-[![CI](https://github.com/natalnetwork/lectorium/actions/workflows/ci.yml/badge.svg)](https://github.com/natalnetwork/lectorium/actions/workflows/ci.yml)
+[![CI](https://github.com/natalnetwork/lectorium/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/natalnetwork/lectorium/actions/workflows/ci.yml)
 [![Coverage](https://codecov.io/gh/natalnetwork/lectorium/branch/main/graph/badge.svg)](https://codecov.io/gh/natalnetwork/lectorium)
 [![Tests](https://img.shields.io/badge/tests-pytest-brightgreen.svg)](https://github.com/natalnetwork/lectorium/actions/workflows/ci.yml)
 [![Lint](https://img.shields.io/badge/lint-ruff-brightgreen.svg)](https://github.com/natalnetwork/lectorium/actions/workflows/ci.yml)
