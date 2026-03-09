@@ -17,6 +17,8 @@ STATIC_DIR = BASE_DIR / "backend" / "app" / "static"
 TEMPLATE_DIR = BASE_DIR / "backend" / "app" / "templates"
 COVERS_DIR = BASE_DIR / "data" / "covers"
 
+COVERS_DIR.mkdir(parents=True, exist_ok=True)
+
 app = FastAPI(title=APP_TITLE)
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
