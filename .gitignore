@@ -81,7 +81,10 @@ data/*
 
 # runtime generated files
 data/books/*
+data/books/**
 data/covers/*
+data/covers/**
+data/db/progress.json
 data/db/*.sqlite
 data/db/*.sqlite3
 data/db/*.db

@@ -1,5 +1,13 @@
 # Lectorium
 
+[![CI](https://github.com/natalnetwork/lectorium/actions/workflows/ci.yml/badge.svg)](https://github.com/natalnetwork/lectorium/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/natalnetwork/lectorium/branch/main/graph/badge.svg)](https://codecov.io/gh/natalnetwork/lectorium)
+[![Tests](https://img.shields.io/badge/tests-pytest-brightgreen.svg)](https://github.com/natalnetwork/lectorium/actions/workflows/ci.yml)
+[![Lint](https://img.shields.io/badge/lint-ruff-brightgreen.svg)](https://github.com/natalnetwork/lectorium/actions/workflows/ci.yml)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Docker](https://img.shields.io/badge/docker-compose-blue.svg)](deploy/docker-compose.yml)
+
 **Self-hosted EPUB audiobook reader with browser-based Text-to-Speech
 (TTS).**
 
@@ -65,11 +73,12 @@ Lectorium follows a simple architecture:
     NGINX (reverse proxy)
        │
        ▼
-    FastAPI Backend
-       │
-       ├── SQLite Database
-       ├── EPUB storage
-       └── Cover storage
+     FastAPI Backend
+         │
+         ├── JSON library database
+         ├── EPUB storage
+         ├── Cover storage
+         └── Progress tracking
 
 Key design principles:
 
@@ -186,10 +195,12 @@ Health endpoint:
     │
     ├── backend
     │   └── app
-    │       ├── routes
+    │       ├── api
+    │       ├── models
     │       ├── services
     │       ├── templates
-    │       └── static
+    │       ├── static
+    │       └── main.py
     │
     ├── deploy
     │   ├── Dockerfile
@@ -200,6 +211,8 @@ Health endpoint:
     │   ├── books
     │   ├── covers
     │   └── db
+    │       ├── library.json
+    │       └── progress.json
     │
     └── tests
 
