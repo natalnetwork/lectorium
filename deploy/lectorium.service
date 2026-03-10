@@ -1,0 +1,15 @@
+[Unit]
+Description=Lectorium (FastAPI + Uvicorn)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/lectorium
+Environment=LECTORIUM_HOST=0.0.0.0
+Environment=LECTORIUM_PORT=8000
+Environment=LECTORIUM_RELOAD=false
+ExecStart=/opt/lectorium/.venv/bin/lectorium run
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

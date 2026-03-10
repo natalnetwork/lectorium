@@ -4,7 +4,6 @@ const libraryEl = document.getElementById("library");
 const readerEl = document.getElementById("reader");
 const bookTitleEl = document.getElementById("book-title");
 const playBtn = document.getElementById("play-btn");
-const pauseBtn = document.getElementById("pause-btn");
 const stopBtn = document.getElementById("stop-btn");
 const prevBtn = document.getElementById("prev-btn");
 const nextBtn = document.getElementById("next-btn");
@@ -21,6 +20,111 @@ let currentChapterIndex = 0;
 let currentUtterance = null;
 let currentSpeechQueue = [];
 let currentSpeechIndex = 0;
+const coverCache = new Map();
+
+function hashString(value) {
+    let hash = 0;
+    if (!value) {
+        return hash;
+    }
+    for (let i = 0; i < value.length; i += 1) {
+        hash = (hash << 5) - hash + value.charCodeAt(i);
+        hash |= 0;
+    }
+    return hash;
+}
+
+function createFallbackCover(title, author, seed) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 300;
+    canvas.height = 420;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+        return "";
+    }
+
+    const palettes = [
+        ["#0f172a", "#1e293b", "#38bdf8", "#f97316"],
+        ["#111827", "#1f2937", "#a855f7", "#f472b6"],
+        ["#0b1120", "#1f2937", "#22c55e", "#eab308"],
+        ["#111827", "#0f172a", "#06b6d4", "#fb7185"],
+    ];
+
+    const paletteIndex = Math.abs(seed || 0) % palettes.length;
+    const [bgStart, bgEnd, accent, accentAlt] = palettes[paletteIndex];
+
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    gradient.addColorStop(0, bgStart);
+    gradient.addColorStop(1, bgEnd);
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = "rgba(148, 163, 184, 0.25)";
+    ctx.lineWidth = 6;
+    ctx.strokeRect(12, 12, canvas.width - 24, canvas.height - 24);
+
+    for (let i = 0; i < 7; i += 1) {
+        const offset = 30 + i * 28;
+        ctx.strokeStyle = i % 2 === 0 ? accent : accentAlt;
+        ctx.globalAlpha = 0.25;
+        ctx.lineWidth = 12;
+        ctx.beginPath();
+        ctx.moveTo(-40, offset);
+        ctx.lineTo(canvas.width + 40, offset + 40);
+        ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    const safeTitle = title || "Untitled";
+    const safeAuthor = author || "Unknown author";
+
+    ctx.fillStyle = "#e2e8f0";
+    ctx.font = "bold 28px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    const words = safeTitle.split(" ").slice(0, 4);
+    const lines = [];
+    let line = "";
+    for (const word of words) {
+        const next = line ? `${line} ${word}` : word;
+        if (ctx.measureText(next).width > 220 && line) {
+            lines.push(line);
+            line = word;
+        } else {
+            line = next;
+        }
+    }
+    if (line) {
+        lines.push(line);
+    }
+
+    const startY = canvas.height / 2 - lines.length * 18;
+    lines.forEach((text, index) => {
+        ctx.fillText(text, canvas.width / 2, startY + index * 36);
+    });
+
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "16px system-ui, sans-serif";
+    ctx.fillText(safeAuthor, canvas.width / 2, canvas.height - 60);
+
+    return canvas.toDataURL("image/png");
+}
+
+function getCoverUrl(book) {
+    if (!book) {
+        return "";
+    }
+    if (book.cover_url) {
+        return book.cover_url;
+    }
+
+    if (!coverCache.has(book.id)) {
+        const seed = hashString(`${book.title || ""}-${book.author || ""}`);
+        coverCache.set(book.id, createFallbackCover(book.title, book.author, seed));
+    }
+    return coverCache.get(book.id) || "";
+}
 
 function stopSpeech() {
     if ("speechSynthesis" in window) {
@@ -183,7 +287,7 @@ async function refreshLibrary() {
         const cover = document.createElement("img");
         cover.className = "book-cover";
         cover.alt = book.title || "Book cover";
-        cover.src = book.cover_url || "";
+        cover.src = getCoverUrl(book);
 
         const meta = document.createElement("div");
         meta.className = "book-meta";
@@ -198,11 +302,61 @@ async function refreshLibrary() {
         meta.appendChild(title);
         meta.appendChild(author);
 
+        const actions = document.createElement("div");
+        actions.className = "book-actions";
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "danger";
+        deleteBtn.textContent = "Remove";
+        deleteBtn.addEventListener("click", (event) => {
+            event.stopPropagation();
+            deleteBook(book.id, book.title);
+        });
+
+        actions.appendChild(deleteBtn);
+
         item.appendChild(cover);
         item.appendChild(meta);
+        item.appendChild(actions);
 
         item.addEventListener("click", () => openBook(book.id));
         libraryEl.appendChild(item);
+    }
+}
+
+async function deleteBook(bookId, bookTitle) {
+    const title = bookTitle || "Untitled";
+    const confirmDelete = window.confirm(`Remove "${title}"?`);
+    if (!confirmDelete) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/books/${bookId}`, {
+            method: "DELETE",
+            headers: {
+                Accept: "application/json",
+            },
+        });
+
+        if (!response.ok) {
+            uploadStatus.textContent = "Remove failed";
+            return;
+        }
+
+        if (currentBook && currentBook.id === bookId) {
+            stopSpeech();
+            currentBook = null;
+            currentChapterIndex = 0;
+            renderCurrentChapter();
+        }
+
+        uploadStatus.textContent = `Removed: ${title}`;
+        await refreshLibrary();
+    } catch (error) {
+        console.error("remove failed:", error);
+        uploadStatus.textContent = "Remove failed";
     }
 }
 
@@ -235,10 +389,36 @@ function renderCurrentChapter() {
     }
 
     const chapter = currentBook.chapters[currentChapterIndex];
-    const chapterTitle = chapter.title || `Chapter ${currentChapterIndex + 1}`;
-    bookTitleEl.textContent = `${currentBook.title} — ${chapterTitle}`;
+    const safeTitle = currentBook.title || "Untitled";
+    const safeAuthor = currentBook.author || "Unknown author";
+    bookTitleEl.textContent = `${safeAuthor}: ${safeTitle}`;
+    const temp = document.createElement("div");
+    temp.innerHTML = chapter.html_content || "";
+
+    const coverUrl = getCoverUrl(currentBook);
+    if (coverUrl) {
+        const images = temp.querySelectorAll("img");
+        let replaced = false;
+
+        images.forEach((img) => {
+            const src = (img.getAttribute("src") || "").toLowerCase();
+            if (src.includes("cover")) {
+                img.setAttribute("src", coverUrl);
+                replaced = true;
+            }
+        });
+
+        if (!replaced && currentChapterIndex === 0) {
+            const cover = document.createElement("img");
+            cover.src = coverUrl;
+            cover.alt = `${currentBook.title} cover`;
+            cover.className = "reader-cover";
+            temp.prepend(cover);
+        }
+    }
+
     readerEl.innerHTML =
-        chapter.html_content || "<p class='muted'>No chapter content available.</p>";
+        temp.innerHTML || "<p class='muted'>No chapter content available.</p>";
 }
 
 function getChapterText(chapterIndex) {
@@ -267,7 +447,7 @@ function findSpeakableChapterIndex(startIndex) {
     return null;
 }
 
-function splitTextIntoChunks(text, maxLength = 1200) {
+function splitTextIntoChunks(text, maxLength = 260) {
     const parts = text.split(/([.!?]+)\s+/);
     const chunks = [];
     let buffer = "";
@@ -321,9 +501,19 @@ function speakNextChunk(voice, rate) {
     window.speechSynthesis.speak(utterance);
 }
 
+function getSelectedVoice() {
+    const voices = window.speechSynthesis.getVoices();
+    const selectedVoiceName = voiceSelect.value;
+    return voices.find((voice) => voice.name === selectedVoiceName) || null;
+}
+
 function playCurrentChapter() {
     if (!("speechSynthesis" in window)) {
         uploadStatus.textContent = "Browser speech synthesis is not available.";
+        return;
+    }
+
+    if (window.speechSynthesis.speaking) {
         return;
     }
 
@@ -344,9 +534,7 @@ function playCurrentChapter() {
 
     stopSpeech();
 
-    const voices = window.speechSynthesis.getVoices();
-    const selectedVoiceName = voiceSelect.value;
-    const selectedVoice = voices.find((voice) => voice.name === selectedVoiceName);
+    const selectedVoice = getSelectedVoice();
 
     currentSpeechQueue = splitTextIntoChunks(text);
     currentSpeechIndex = 0;
@@ -359,6 +547,7 @@ function playCurrentChapter() {
     window.setTimeout(() => {
         speakNextChunk(selectedVoice, rate);
     }, 50);
+
 }
 
 async function handleUploadSubmit(event) {
@@ -408,12 +597,6 @@ function bindEvents() {
     uploadForm.addEventListener("submit", handleUploadSubmit);
 
     playBtn.addEventListener("click", playCurrentChapter);
-
-    pauseBtn.addEventListener("click", () => {
-        if ("speechSynthesis" in window) {
-            window.speechSynthesis.pause();
-        }
-    });
 
     stopBtn.addEventListener("click", stopSpeech);
 

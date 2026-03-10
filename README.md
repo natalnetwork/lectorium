@@ -8,14 +8,24 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-compose-blue.svg)](deploy/docker-compose.yml)
 
-**Self-hosted EPUB audiobook reader with browser-based Text-to-Speech
-(TTS).**
+**A self-hosted EPUB reader with audio narration.**
 
-Lectorium turns your personal EPUB library into a listenable audiobook
+## Local Quality Checks
+
+These commands are used to keep the workspace clean locally:
+
+``` bash
+python -m pytest
+python -m ruff check .
+python -m ruff format --check .
+python -m pyright
+```
+
+Lectorium turns your personal EPUB library into a listenable narrated
 experience directly in the browser. It is designed to be lightweight,
 privacy-friendly, and easy to self-host.
 
-Unlike cloud-based audiobook readers, Lectorium runs entirely on your
+Unlike cloud-based audio narration readers, Lectorium runs entirely on your
 own infrastructure and uses the browser's native speech synthesis
 capabilities.
 
@@ -29,7 +39,7 @@ capabilities.
 -   Build a private server-side book library
 -   Cover-based library browsing
 -   EPUB chapter navigation
--   Browser-based Text-to-Speech playback
+-   Audio narration playback
 -   Resume listening from last position
 -   Responsive UI for desktop and mobile
 
@@ -40,6 +50,7 @@ capabilities.
 -   Bookmarks ("audio markers")
 -   Multi-user support
 -   Server-side TTS engines
+-   Pause/Resume (returning with new TTS integration)
 -   Word-level highlighting
 -   Sleep timer
 
@@ -47,7 +58,7 @@ capabilities.
 
 # Why Lectorium?
 
-Many existing text-to-speech readers rely on cloud services and
+Many existing audio narration readers rely on cloud services and
 subscription models.
 
 Lectorium takes a different approach:
@@ -120,12 +131,15 @@ Deployment
 
 Early development -- MVP phase.
 
+Pause/Resume is currently deferred until the next TTS integration to ensure
+consistent audio across browsers.
+
 Current goals:
 
 -   establish stable architecture
 -   implement EPUB import
 -   build minimal reader interface
--   integrate browser TTS playback
+-   integrate audio narration playback
 
 ------------------------------------------------------------------------
 
@@ -158,8 +172,35 @@ pip install -e .
 Start development server:
 
 ``` bash
-uvicorn backend.app.main:app --reload
+lectorium
 ```
+
+The `lectorium` command is installed by the editable install above and
+starts `uvicorn backend.app.main:app --reload` on `127.0.0.1:8000`.
+
+You can override the host, port, and reload behavior via environment variables:
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `LECTORIUM_HOST` | `127.0.0.1` | Bind address |
+| `LECTORIUM_PORT` | `8000` | Port |
+| `LECTORIUM_RELOAD` | `true` | Reload on changes (true/false, 1/0, yes/no, on/off) |
+
+``` bash
+LECTORIUM_HOST=0.0.0.0 LECTORIUM_PORT=8080 LECTORIUM_RELOAD=false lectorium
+```
+
+Background commands for local usage:
+
+``` bash
+lectorium start
+lectorium status
+lectorium stop
+```
+
+These commands write a pid file (.lectorium.pid) and log output to
+.lectorium.log in the project root.
+If a stale or running pid is detected, `lectorium start` will restart it.
 
 Open in browser:
 
@@ -189,6 +230,26 @@ Health endpoint:
 
 ------------------------------------------------------------------------
 
+# Production (systemd)
+
+An example unit file is available in deploy/lectorium.service. Adjust the
+working directory and paths to match your server setup, then install:
+
+``` bash
+sudo cp deploy/lectorium.service /etc/systemd/system/lectorium.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now lectorium
+```
+
+Status and logs:
+
+``` bash
+systemctl status lectorium
+journalctl -u lectorium -f
+```
+
+------------------------------------------------------------------------
+
 # Repository Structure
 
     lectorium
@@ -205,6 +266,7 @@ Health endpoint:
     ├── deploy
     │   ├── Dockerfile
     │   ├── docker-compose.yml
+    │   ├── lectorium.service
     │   └── nginx.conf
     │
     ├── data

@@ -56,3 +56,10 @@ def get_progress(book_id: str) -> dict[str, int]:
         "chapter_index": 0,
         "position": 0,
     }
+
+
+def delete_progress(book_id: str) -> None:
+    payload: dict[str, Any] = _load_progress()
+    if book_id in payload:
+        payload.pop(book_id, None)
+        _save_progress(payload)

@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lectorium"
-version = "0.1.0"
-description = "Self-hosted EPUB audiobook reader with browser TTS"
+version = "0.1.1"
+description = "A self-hosted EPUB reader with audio narration"
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [
@@ -19,6 +19,9 @@ dependencies = [
   "ebooklib>=0.18",
   "python-multipart>=0.0.9"
 ]
+
+[project.scripts]
+lectorium = "backend.app.cli:main"
 
 [project.optional-dependencies]
 dev = [

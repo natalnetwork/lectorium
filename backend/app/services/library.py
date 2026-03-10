@@ -99,3 +99,41 @@ def get_book(book_id: str) -> dict[str, Any] | None:
         if book.get("id") == book_id:
             return book
     return None
+
+
+def _delete_cover_file(cover_url: str | None) -> None:
+    if not cover_url:
+        return
+    if not cover_url.startswith("/covers/"):
+        return
+    filename = Path(cover_url).name
+    if not filename:
+        return
+    target = COVERS_DIR / filename
+    if target.exists():
+        target.unlink()
+
+
+def delete_book(book_id: str) -> dict[str, Any] | None:
+    payload: dict[str, Any] = _load_library()
+    books: list[dict[str, Any]] = payload.get("books", [])
+
+    if not isinstance(books, list):
+        return None
+
+    removed: dict[str, Any] | None = None
+    remaining: list[dict[str, Any]] = []
+
+    for book in books:
+        if book.get("id") == book_id:
+            removed = book
+        else:
+            remaining.append(book)
+
+    if removed is None:
+        return None
+
+    payload["books"] = remaining
+    _save_library(payload)
+    _delete_cover_file(removed.get("cover_url"))
+    return removed

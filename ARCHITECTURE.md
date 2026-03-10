@@ -1,7 +1,7 @@
 # Lectorium Architecture
 
-Lectorium is a self-hosted EPUB audiobook reader that converts EPUB
-books into spoken audio using the browser's built-in Text-to-Speech
+Lectorium is a self-hosted EPUB reader with audio narration that converts
+EPUB books into spoken audio using the browser's built-in Text-to-Speech
 capabilities.
 
 The system is designed to be:

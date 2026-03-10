@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -16,13 +16,17 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 STATIC_DIR = BASE_DIR / "backend" / "app" / "static"
 TEMPLATE_DIR = BASE_DIR / "backend" / "app" / "templates"
 COVERS_DIR = BASE_DIR / "data" / "covers"
+FAVICON_PATH = STATIC_DIR / "favicon.svg"
+BOOK_ASSETS_DIR = BASE_DIR / "data" / "book-assets"
 
 COVERS_DIR.mkdir(parents=True, exist_ok=True)
+BOOK_ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title=APP_TITLE)
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 app.mount("/covers", StaticFiles(directory=str(COVERS_DIR)), name="covers")
+app.mount("/book-assets", StaticFiles(directory=str(BOOK_ASSETS_DIR)), name="book-assets")
 
 templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
 
@@ -44,3 +48,10 @@ async def index(request: Request):
             "title": APP_TITLE,
         },
     )
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    if FAVICON_PATH.exists():
+        return FileResponse(str(FAVICON_PATH))
+    return JSONResponse(status_code=404, content={"detail": "Not found"})

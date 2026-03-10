@@ -58,6 +58,19 @@ body {
 .book-meta {
     display: flex;
     flex-direction: column;
+    flex: 1;
+}
+
+.book-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+button.danger {
+    background: #ef4444;
+    border-color: #ef4444;
+    color: #111827;
+    font-weight: 600;
 }
 
 .controls {
@@ -83,6 +96,23 @@ input[type="range"] {
     background: #1f2937;
     color: #f9fafb;
     padding: 0.5rem 0.85rem;
+    transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+button:hover {
+    transform: translateY(-1px);
+    border-color: #64748b;
+    box-shadow: 0 8px 16px rgba(15, 23, 42, 0.25);
+}
+
+button:active {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.45);
 }
 
 button.primary {
@@ -91,6 +121,7 @@ button.primary {
     border-color: #60a5fa;
     font-weight: 700;
 }
+
 
 input[type="file"] {
     width: 100%;
@@ -104,6 +135,16 @@ input[type="file"] {
     padding: 1rem;
     background: #020817;
     overflow-y: auto;
+}
+
+.reader-cover {
+    display: block;
+    max-width: 220px;
+    width: 100%;
+    height: auto;
+    margin: 0 auto 1rem;
+    border-radius: 10px;
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.35);
 }
 
 #upload-status {

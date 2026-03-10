@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from _pytest.monkeypatch import MonkeyPatch
 from ebooklib import epub
 from fastapi.testclient import TestClient
 
@@ -11,21 +12,26 @@ from backend.app.services import library, progress, storage
 
 def _make_epub(path: Path) -> None:
     book = epub.EpubBook()
-    book.set_title("Sample")
-    book.add_author("Author")
+    book.set_title("Sample")  # type: ignore[reportUnknownMemberType]
+    book.add_author("Author")  # type: ignore[reportUnknownMemberType]
 
-    chapter = epub.EpubHtml(title="Intro", file_name="intro.xhtml", content="<p>Hello</p>")
-    book.add_item(chapter)
+    chapter = epub.EpubHtml(
+        title="Intro",
+        file_name="intro.xhtml",
+        content="<p>Hello</p>",
+    )
+    book.add_item(chapter)  # type: ignore[reportUnknownMemberType]
 
-    book.toc = (chapter,)
+    # ebooklib ist hier für Pylance schlecht typisiert
+    book.toc = (chapter,)  # type: ignore[reportUnknownMemberType]
     book.spine = ["nav", chapter]
-    book.add_item(epub.EpubNcx())
-    book.add_item(epub.EpubNav())
+    book.add_item(epub.EpubNcx())  # type: ignore[reportUnknownMemberType]
+    book.add_item(epub.EpubNav())  # type: ignore[reportUnknownMemberType]
 
-    epub.write_epub(str(path), book)
+    epub.write_epub(str(path), book)  # type: ignore[reportUnknownMemberType]
 
 
-def test_upload_and_library_flow(tmp_path, monkeypatch) -> None:
+def test_upload_and_library_flow(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
     books_dir = tmp_path / "books"
     db_dir = tmp_path / "db"
 

@@ -3,8 +3,8 @@
 This document describes how to set up a local development environment
 and how development for Lectorium is structured.
 
-Lectorium is a self-hosted EPUB audiobook reader that converts EPUB
-books into spoken audio using the browser's built‑in Text‑to‑Speech
+Lectorium is a self-hosted EPUB reader with audio narration that converts
+EPUB books into spoken audio using the browser's built-in Text-to-Speech
 engine.
 
 ------------------------------------------------------------------------
@@ -196,7 +196,7 @@ git checkout -b feature/epub-import
 ## Milestone 4
 
 -   reader view
--   browser TTS playback
+-   audio narration playback
 
 ## Milestone 5
 

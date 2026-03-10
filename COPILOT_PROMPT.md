@@ -1,6 +1,6 @@
 You are a senior Python backend engineer.
 
-We are building a self-hosted EPUB audiobook reader called "Lectorium".
+We are building a self-hosted EPUB reader with audio narration called "Lectorium".
 The stack is:
 
 - Python 3.12
