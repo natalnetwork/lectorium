@@ -1,65 +1,39 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
-from typing import Any
+from sqlalchemy.orm import Session
 
-BASE_DIR: Path = Path(__file__).resolve().parents[3]
-DATA_DIR: Path = BASE_DIR / "data"
-DB_DIR: Path = DATA_DIR / "db"
-PROGRESS_PATH: Path = DB_DIR / "progress.json"
-
-
-def ensure_dirs() -> None:
-    DB_DIR.mkdir(parents=True, exist_ok=True)
-
-
-def _ensure_progress_file() -> None:
-    ensure_dirs()
-    if not PROGRESS_PATH.exists():
-        PROGRESS_PATH.write_text("{}", encoding="utf-8")
-
-
-def _load_progress() -> dict[str, Any]:
-    _ensure_progress_file()
-    return json.loads(PROGRESS_PATH.read_text(encoding="utf-8"))
-
-
-def _save_progress(payload: dict[str, Any]) -> None:
-    ensure_dirs()
-    PROGRESS_PATH.write_text(
-        json.dumps(payload, indent=2),
-        encoding="utf-8",
-    )
+from backend.app import database
+from backend.app.models.db_models import ProgressRow
 
 
 def save_progress(book_id: str, *, chapter_index: int, position: int) -> None:
-    payload: dict[str, Any] = _load_progress()
-    payload[book_id] = {
-        "chapter_index": chapter_index,
-        "position": position,
-    }
-    _save_progress(payload)
+    with Session(database.engine) as session:
+        row = session.get(ProgressRow, book_id)
+        if row is None:
+            session.add(
+                ProgressRow(
+                    book_id=book_id,
+                    chapter_index=chapter_index,
+                    position=position,
+                )
+            )
+        else:
+            row.chapter_index = chapter_index
+            row.position = position
+        session.commit()
 
 
 def get_progress(book_id: str) -> dict[str, int]:
-    payload: dict[str, Any] = _load_progress()
-    entry = payload.get(book_id)
-
-    if isinstance(entry, dict):
-        return {
-            "chapter_index": int(entry.get("chapter_index", 0)),
-            "position": int(entry.get("position", 0)),
-        }
-
-    return {
-        "chapter_index": 0,
-        "position": 0,
-    }
+    with Session(database.engine) as session:
+        row = session.get(ProgressRow, book_id)
+        if row is None:
+            return {"chapter_index": 0, "position": 0}
+        return {"chapter_index": row.chapter_index, "position": row.position}
 
 
 def delete_progress(book_id: str) -> None:
-    payload: dict[str, Any] = _load_progress()
-    if book_id in payload:
-        payload.pop(book_id, None)
-        _save_progress(payload)
+    with Session(database.engine) as session:
+        row = session.get(ProgressRow, book_id)
+        if row is not None:
+            session.delete(row)
+            session.commit()

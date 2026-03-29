@@ -2,12 +2,27 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from ebooklib import epub
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.pool import StaticPool
 
-from backend.app import main
-from backend.app.services import library, progress, storage
+from backend.app import database
+from backend.app.database import Base
+from backend.app.models import db_models as _  # noqa: F401 – register ORM classes
+
+
+@pytest.fixture(autouse=True)
+def in_memory_db(monkeypatch: MonkeyPatch) -> None:
+    test_engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(test_engine)
+    monkeypatch.setattr(database, "engine", test_engine)
 
 
 def _make_epub(path: Path) -> None:
@@ -22,7 +37,6 @@ def _make_epub(path: Path) -> None:
     )
     book.add_item(chapter)  # type: ignore[reportUnknownMemberType]
 
-    # ebooklib ist hier für Pylance schlecht typisiert
     book.toc = (chapter,)  # type: ignore[reportUnknownMemberType]
     book.spine = ["nav", chapter]
     book.add_item(epub.EpubNcx())  # type: ignore[reportUnknownMemberType]
@@ -32,14 +46,11 @@ def _make_epub(path: Path) -> None:
 
 
 def test_upload_and_library_flow(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
-    books_dir = tmp_path / "books"
-    db_dir = tmp_path / "db"
+    from backend.app import main
+    from backend.app.services import library, storage
 
-    monkeypatch.setattr(storage, "BOOKS_DIR", books_dir)
-    monkeypatch.setattr(library, "DB_DIR", db_dir)
-    monkeypatch.setattr(library, "LIBRARY_PATH", db_dir / "library.json")
-    monkeypatch.setattr(progress, "DB_DIR", db_dir)
-    monkeypatch.setattr(progress, "PROGRESS_PATH", db_dir / "progress.json")
+    monkeypatch.setattr(storage, "BOOKS_DIR", tmp_path / "books")
+    monkeypatch.setattr(library, "COVERS_DIR", tmp_path / "covers")
 
     sample_path = tmp_path / "sample.epub"
     _make_epub(sample_path)

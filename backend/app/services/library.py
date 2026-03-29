@@ -1,47 +1,21 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
+from sqlalchemy.orm import Session
+
+from backend.app import database
 from backend.app.models.book import Book
+from backend.app.models.db_models import BookRow, ChapterRow
 
 BASE_DIR: Path = Path(__file__).resolve().parents[3]
 DATA_DIR: Path = BASE_DIR / "data"
-DB_DIR: Path = DATA_DIR / "db"
 COVERS_DIR: Path = DATA_DIR / "covers"
-LIBRARY_PATH: Path = DB_DIR / "library.json"
-
-
-def ensure_dirs() -> None:
-    DB_DIR.mkdir(parents=True, exist_ok=True)
-    COVERS_DIR.mkdir(parents=True, exist_ok=True)
-
-
-def _ensure_library_file() -> None:
-    ensure_dirs()
-    if not LIBRARY_PATH.exists():
-        LIBRARY_PATH.write_text(
-            json.dumps({"books": []}, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
-
-
-def _load_library() -> dict[str, Any]:
-    _ensure_library_file()
-    return json.loads(LIBRARY_PATH.read_text(encoding="utf-8"))
-
-
-def _save_library(payload: dict[str, Any]) -> None:
-    ensure_dirs()
-    LIBRARY_PATH.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
 
 
 def save_cover_bytes(book_id: str, content: bytes, extension: str) -> str:
-    ensure_dirs()
+    COVERS_DIR.mkdir(parents=True, exist_ok=True)
     ext: str = extension if extension.startswith(".") else f".{extension}"
     target: Path = COVERS_DIR / f"{book_id}{ext}"
     target.write_bytes(content)
@@ -49,56 +23,73 @@ def save_cover_bytes(book_id: str, content: bytes, extension: str) -> str:
 
 
 def upsert_book(book: Book) -> None:
-    payload: dict[str, Any] = _load_library()
-    books: list[dict[str, Any]] = payload.get("books", [])
+    with Session(database.engine) as session:
+        existing = session.get(BookRow, book.id)
+        if existing is not None:
+            existing.title = book.title
+            existing.author = book.author
+            existing.language = book.language
+            existing.cover_url = book.cover_url
+            for ch in list(existing.chapters):
+                session.delete(ch)
+            session.flush()
+        else:
+            existing = BookRow(
+                id=book.id,
+                title=book.title,
+                author=book.author,
+                language=book.language,
+                cover_url=book.cover_url,
+            )
+            session.add(existing)
 
-    new_entry: dict[str, Any] = book.model_dump()
+        for i, chapter in enumerate(book.chapters):
+            session.add(
+                ChapterRow(
+                    book_id=book.id,
+                    position=i,
+                    title=chapter.title,
+                    html_content=chapter.html_content,
+                )
+            )
 
-    replaced = False
-    for index, existing in enumerate(books):
-        if existing.get("id") == book.id:
-            books[index] = new_entry
-            replaced = True
-            break
-
-    if not replaced:
-        books.append(new_entry)
-
-    payload["books"] = books
-    _save_library(payload)
-
-
-def get_books() -> list[dict[str, Any]]:
-    payload: dict[str, Any] = _load_library()
-    books = payload.get("books", [])
-    if isinstance(books, list):
-        return books
-    return []
+        session.commit()
 
 
 def get_books_summary() -> list[dict[str, Any]]:
-    books: list[dict[str, Any]] = get_books()
-    result: list[dict[str, Any]] = []
-
-    for book in books:
-        result.append(
+    with Session(database.engine) as session:
+        rows = session.query(BookRow).all()
+        return [
             {
-                "id": book.get("id"),
-                "title": book.get("title"),
-                "author": book.get("author"),
-                "cover_url": book.get("cover_url"),
+                "id": row.id,
+                "title": row.title,
+                "author": row.author,
+                "cover_url": row.cover_url,
             }
-        )
-
-    return result
+            for row in rows
+        ]
 
 
 def get_book(book_id: str) -> dict[str, Any] | None:
-    books: list[dict[str, Any]] = get_books()
-    for book in books:
-        if book.get("id") == book_id:
-            return book
-    return None
+    with Session(database.engine) as session:
+        row = session.get(BookRow, book_id)
+        if row is None:
+            return None
+        return _book_to_dict(row)
+
+
+def _book_to_dict(row: BookRow) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "title": row.title,
+        "author": row.author,
+        "language": row.language,
+        "cover_url": row.cover_url,
+        "chapters": [
+            {"title": ch.title, "html_content": ch.html_content}
+            for ch in sorted(row.chapters, key=lambda c: c.position)
+        ],
+    }
 
 
 def _delete_cover_file(cover_url: str | None) -> None:
@@ -115,25 +106,12 @@ def _delete_cover_file(cover_url: str | None) -> None:
 
 
 def delete_book(book_id: str) -> dict[str, Any] | None:
-    payload: dict[str, Any] = _load_library()
-    books: list[dict[str, Any]] = payload.get("books", [])
-
-    if not isinstance(books, list):
-        return None
-
-    removed: dict[str, Any] | None = None
-    remaining: list[dict[str, Any]] = []
-
-    for book in books:
-        if book.get("id") == book_id:
-            removed = book
-        else:
-            remaining.append(book)
-
-    if removed is None:
-        return None
-
-    payload["books"] = remaining
-    _save_library(payload)
-    _delete_cover_file(removed.get("cover_url"))
-    return removed
+    with Session(database.engine) as session:
+        row = session.get(BookRow, book_id)
+        if row is None:
+            return None
+        result = _book_to_dict(row)
+        session.delete(row)
+        session.commit()
+    _delete_cover_file(result.get("cover_url"))
+    return result

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import AsyncGenerator
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
@@ -9,6 +11,7 @@ from fastapi.templating import Jinja2Templates
 
 from backend.app.api.books import router as books_router
 from backend.app.api.upload import router as upload_router
+from backend.app.database import init_db
 
 APP_TITLE = "Lectorium"
 
@@ -22,7 +25,14 @@ BOOK_ASSETS_DIR = BASE_DIR / "data" / "book-assets"
 COVERS_DIR.mkdir(parents=True, exist_ok=True)
 BOOK_ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 
-app = FastAPI(title=APP_TITLE)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    init_db()
+    yield
+
+
+app = FastAPI(title=APP_TITLE, lifespan=lifespan)
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 app.mount("/covers", StaticFiles(directory=str(COVERS_DIR)), name="covers")
