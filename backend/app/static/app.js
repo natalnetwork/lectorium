@@ -69,6 +69,7 @@ function showAuth() {
     registerForm.classList.add("hidden");
     authError.classList.add("hidden");
     authError.textContent = "";
+    window.setTimeout(() => loginUsernameEl.focus(), 50);
 }
 
 function showAuthError(message) {
@@ -84,6 +85,9 @@ async function doLogin() {
         showAuthError("Please enter username and password.");
         return;
     }
+    loginBtn.disabled = true;
+    loginBtn.textContent = "Signing in…";
+    authError.classList.add("hidden");
     try {
         const response = await fetch("/auth/login", {
             method: "POST",
@@ -102,6 +106,9 @@ async function doLogin() {
         await refreshLibrary();
     } catch {
         showAuthError("Network error. Please try again.");
+    } finally {
+        loginBtn.disabled = false;
+        loginBtn.textContent = "Sign in";
     }
 }
 
@@ -112,6 +119,9 @@ async function doRegister() {
         showAuthError("Please enter username and password.");
         return;
     }
+    registerBtn.disabled = true;
+    registerBtn.textContent = "Creating account…";
+    authError.classList.add("hidden");
     try {
         const response = await fetch("/auth/register", {
             method: "POST",
@@ -127,9 +137,13 @@ async function doRegister() {
         storeAuth(data.access_token, data.username);
         regPasswordEl.value = "";
         showApp();
+        uploadStatus.textContent = `Welcome, ${data.username}!`;
         await refreshLibrary();
     } catch {
         showAuthError("Network error. Please try again.");
+    } finally {
+        registerBtn.disabled = false;
+        registerBtn.textContent = "Create account";
     }
 }
 
@@ -724,15 +738,19 @@ function bindAuthEvents() {
     showRegisterLink.addEventListener("click", (e) => {
         e.preventDefault();
         authError.classList.add("hidden");
+        authError.textContent = "";
         loginForm.classList.add("hidden");
         registerForm.classList.remove("hidden");
+        regUsernameEl.focus();
     });
 
     showLoginLink.addEventListener("click", (e) => {
         e.preventDefault();
         authError.classList.add("hidden");
+        authError.textContent = "";
         registerForm.classList.add("hidden");
         loginForm.classList.remove("hidden");
+        loginUsernameEl.focus();
     });
 
     logoutBtn.addEventListener("click", doLogout);

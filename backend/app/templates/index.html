@@ -22,14 +22,14 @@
           <input id="login-username" type="text" placeholder="Username" autocomplete="username" />
           <input id="login-password" type="password" placeholder="Password" autocomplete="current-password" />
           <button id="login-btn" class="primary" type="button">Sign in</button>
-          <p class="muted">No account yet? <a href="#" id="show-register">Register</a></p>
+          <p class="muted">No account yet? <a href="#" id="show-register">Create one</a></p>
         </div>
 
         <div id="register-form" class="hidden">
           <h2>Create account</h2>
           <input id="reg-username" type="text" placeholder="Username" autocomplete="username" />
           <input id="reg-password" type="password" placeholder="Password" autocomplete="new-password" />
-          <button id="register-btn" class="primary" type="button">Register</button>
+          <button id="register-btn" class="primary" type="button">Create account</button>
           <p class="muted">Already have an account? <a href="#" id="show-login">Sign in</a></p>
         </div>
       </div>
@@ -38,8 +38,8 @@
     <!-- Main app (shown when logged in) -->
     <div id="app-screen" class="hidden">
 
-      <div class="card app-header">
-        <h1>Lectorium</h1>
+      <div class="topbar">
+        <h1 class="topbar-title">Lectorium</h1>
         <div class="user-bar">
           <span id="username-display" class="muted"></span>
           <button id="logout-btn" type="button">Sign out</button>
