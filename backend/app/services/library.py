@@ -22,7 +22,7 @@ def save_cover_bytes(book_id: str, content: bytes, extension: str) -> str:
     return f"/covers/{target.name}"
 
 
-def upsert_book(book: Book) -> None:
+def upsert_book(book: Book, user_id: str) -> None:
     with Session(database.engine) as session:
         existing = session.get(BookRow, book.id)
         if existing is not None:
@@ -36,6 +36,7 @@ def upsert_book(book: Book) -> None:
         else:
             existing = BookRow(
                 id=book.id,
+                user_id=user_id,
                 title=book.title,
                 author=book.author,
                 language=book.language,
@@ -56,9 +57,9 @@ def upsert_book(book: Book) -> None:
         session.commit()
 
 
-def get_books_summary() -> list[dict[str, Any]]:
+def get_books_summary(user_id: str) -> list[dict[str, Any]]:
     with Session(database.engine) as session:
-        rows = session.query(BookRow).all()
+        rows = session.query(BookRow).filter_by(user_id=user_id).all()
         return [
             {
                 "id": row.id,
@@ -70,9 +71,9 @@ def get_books_summary() -> list[dict[str, Any]]:
         ]
 
 
-def get_book(book_id: str) -> dict[str, Any] | None:
+def get_book(book_id: str, user_id: str) -> dict[str, Any] | None:
     with Session(database.engine) as session:
-        row = session.get(BookRow, book_id)
+        row = session.query(BookRow).filter_by(id=book_id, user_id=user_id).first()
         if row is None:
             return None
         return _book_to_dict(row)
@@ -105,9 +106,9 @@ def _delete_cover_file(cover_url: str | None) -> None:
         target.unlink()
 
 
-def delete_book(book_id: str) -> dict[str, Any] | None:
+def delete_book(book_id: str, user_id: str) -> dict[str, Any] | None:
     with Session(database.engine) as session:
-        row = session.get(BookRow, book_id)
+        row = session.query(BookRow).filter_by(id=book_id, user_id=user_id).first()
         if row is None:
             return None
         result = _book_to_dict(row)

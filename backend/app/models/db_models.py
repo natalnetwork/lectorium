@@ -6,15 +6,31 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from backend.app.database import Base
 
 
+class UserRow(Base):
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    username: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String, nullable=False)
+
+    books: Mapped[list[BookRow]] = relationship(
+        "BookRow",
+        back_populates="owner",
+        cascade="all, delete-orphan",
+    )
+
+
 class BookRow(Base):
     __tablename__ = "books"
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     title: Mapped[str] = mapped_column(String, nullable=False)
     author: Mapped[str] = mapped_column(String, nullable=False)
     language: Mapped[str] = mapped_column(String, nullable=False, default="unknown")
     cover_url: Mapped[str | None] = mapped_column(String, nullable=True)
 
+    owner: Mapped[UserRow] = relationship("UserRow", back_populates="books")
     chapters: Mapped[list[ChapterRow]] = relationship(
         "ChapterRow",
         back_populates="book",

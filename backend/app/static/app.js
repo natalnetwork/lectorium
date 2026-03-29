@@ -1,3 +1,47 @@
+// ── Auth state ────────────────────────────────────────────────────────────────
+const TOKEN_KEY = "lectorium.token";
+const USERNAME_KEY = "lectorium.username";
+
+let authToken = window.localStorage.getItem(TOKEN_KEY) || "";
+let authUsername = window.localStorage.getItem(USERNAME_KEY) || "";
+
+function authHeaders(extra = {}) {
+    return { Authorization: `Bearer ${authToken}`, Accept: "application/json", ...extra };
+}
+
+function storeAuth(token, username) {
+    authToken = token;
+    authUsername = username;
+    window.localStorage.setItem(TOKEN_KEY, token);
+    window.localStorage.setItem(USERNAME_KEY, username);
+}
+
+function clearAuth() {
+    authToken = "";
+    authUsername = "";
+    window.localStorage.removeItem(TOKEN_KEY);
+    window.localStorage.removeItem(USERNAME_KEY);
+}
+
+// ── DOM refs ──────────────────────────────────────────────────────────────────
+const authScreen = document.getElementById("auth-screen");
+const appScreen = document.getElementById("app-screen");
+const authError = document.getElementById("auth-error");
+
+const loginForm = document.getElementById("login-form");
+const registerForm = document.getElementById("register-form");
+const loginUsernameEl = document.getElementById("login-username");
+const loginPasswordEl = document.getElementById("login-password");
+const loginBtn = document.getElementById("login-btn");
+const regUsernameEl = document.getElementById("reg-username");
+const regPasswordEl = document.getElementById("reg-password");
+const registerBtn = document.getElementById("register-btn");
+const showRegisterLink = document.getElementById("show-register");
+const showLoginLink = document.getElementById("show-login");
+
+const usernameDisplay = document.getElementById("username-display");
+const logoutBtn = document.getElementById("logout-btn");
+
 const uploadForm = document.getElementById("upload-form");
 const uploadStatus = document.getElementById("upload-status");
 const libraryEl = document.getElementById("library");
@@ -11,6 +55,93 @@ const languageSelect = document.getElementById("language-select");
 const voiceSelect = document.getElementById("voice-select");
 const rateInput = document.getElementById("rate-input");
 
+// ── UI helpers ────────────────────────────────────────────────────────────────
+function showApp() {
+    authScreen.classList.add("hidden");
+    appScreen.classList.remove("hidden");
+    usernameDisplay.textContent = authUsername;
+}
+
+function showAuth() {
+    appScreen.classList.add("hidden");
+    authScreen.classList.remove("hidden");
+    loginForm.classList.remove("hidden");
+    registerForm.classList.add("hidden");
+    authError.classList.add("hidden");
+    authError.textContent = "";
+}
+
+function showAuthError(message) {
+    authError.textContent = message;
+    authError.classList.remove("hidden");
+}
+
+// ── Auth actions ──────────────────────────────────────────────────────────────
+async function doLogin() {
+    const username = loginUsernameEl.value.trim();
+    const password = loginPasswordEl.value;
+    if (!username || !password) {
+        showAuthError("Please enter username and password.");
+        return;
+    }
+    try {
+        const response = await fetch("/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({ username, password }),
+        });
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            showAuthError(data.detail || "Login failed.");
+            return;
+        }
+        const data = await response.json();
+        storeAuth(data.access_token, data.username);
+        loginPasswordEl.value = "";
+        showApp();
+        await refreshLibrary();
+    } catch {
+        showAuthError("Network error. Please try again.");
+    }
+}
+
+async function doRegister() {
+    const username = regUsernameEl.value.trim();
+    const password = regPasswordEl.value;
+    if (!username || !password) {
+        showAuthError("Please enter username and password.");
+        return;
+    }
+    try {
+        const response = await fetch("/auth/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({ username, password }),
+        });
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            showAuthError(data.detail || "Registration failed.");
+            return;
+        }
+        const data = await response.json();
+        storeAuth(data.access_token, data.username);
+        regPasswordEl.value = "";
+        showApp();
+        await refreshLibrary();
+    } catch {
+        showAuthError("Network error. Please try again.");
+    }
+}
+
+function doLogout() {
+    stopSpeech();
+    clearAuth();
+    currentBook = null;
+    currentChapterIndex = 0;
+    showAuth();
+}
+
+// ── Reader state ──────────────────────────────────────────────────────────────
 const LANGUAGE_STORAGE_KEY = "lectorium.language";
 const VOICE_STORAGE_KEY = "lectorium.voice";
 const RATE_STORAGE_KEY = "lectorium.rate";
@@ -22,6 +153,7 @@ let currentSpeechQueue = [];
 let currentSpeechIndex = 0;
 const coverCache = new Map();
 
+// ── Cover helpers ─────────────────────────────────────────────────────────────
 function hashString(value) {
     let hash = 0;
     if (!value) {
@@ -126,6 +258,7 @@ function getCoverUrl(book) {
     return coverCache.get(book.id) || "";
 }
 
+// ── Speech ────────────────────────────────────────────────────────────────────
 function stopSpeech() {
     if ("speechSynthesis" in window) {
         window.speechSynthesis.cancel();
@@ -259,14 +392,15 @@ function refreshVoices() {
     }
 }
 
+// ── Library & reader ──────────────────────────────────────────────────────────
 async function refreshLibrary() {
-    const response = await fetch("/api/books", {
-        headers: {
-            Accept: "application/json",
-        },
-    });
+    const response = await fetch("/api/books", { headers: authHeaders() });
 
-    console.log("refreshLibrary status:", response.status);
+    if (response.status === 401) {
+        clearAuth();
+        showAuth();
+        return;
+    }
 
     if (!response.ok) {
         throw new Error(`Failed to load library: ${response.status}`);
@@ -335,9 +469,7 @@ async function deleteBook(bookId, bookTitle) {
     try {
         const response = await fetch(`/api/books/${bookId}`, {
             method: "DELETE",
-            headers: {
-                Accept: "application/json",
-            },
+            headers: authHeaders(),
         });
 
         if (!response.ok) {
@@ -363,13 +495,7 @@ async function deleteBook(bookId, bookTitle) {
 async function openBook(bookId) {
     stopSpeech();
 
-    const response = await fetch(`/api/books/${bookId}`, {
-        headers: {
-            Accept: "application/json",
-        },
-    });
-
-    console.log("openBook status:", response.status);
+    const response = await fetch(`/api/books/${bookId}`, { headers: authHeaders() });
 
     if (!response.ok) {
         console.error("Failed to load book", response.status);
@@ -547,12 +673,10 @@ function playCurrentChapter() {
     window.setTimeout(() => {
         speakNextChunk(selectedVoice, rate);
     }, 50);
-
 }
 
 async function handleUploadSubmit(event) {
     event.preventDefault();
-    console.log("upload submit intercepted");
 
     const formData = new FormData(uploadForm);
     uploadStatus.textContent = "Uploading...";
@@ -560,18 +684,12 @@ async function handleUploadSubmit(event) {
     try {
         const response = await fetch("/upload", {
             method: "POST",
-            headers: {
-                "X-Requested-With": "fetch",
-                Accept: "application/json",
-            },
+            headers: authHeaders({ "X-Requested-With": "fetch" }),
             body: formData,
         });
 
-        console.log("upload response status:", response.status);
-
         const contentType = response.headers.get("content-type") || "";
         const raw = await response.text();
-        console.log("upload raw response:", raw);
 
         if (!response.ok) {
             uploadStatus.textContent = "Upload failed";
@@ -593,11 +711,37 @@ async function handleUploadSubmit(event) {
     }
 }
 
-function bindEvents() {
+// ── Event binding ─────────────────────────────────────────────────────────────
+function bindAuthEvents() {
+    loginBtn.addEventListener("click", doLogin);
+    registerBtn.addEventListener("click", doRegister);
+
+    loginUsernameEl.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+    loginPasswordEl.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+    regUsernameEl.addEventListener("keydown", (e) => { if (e.key === "Enter") doRegister(); });
+    regPasswordEl.addEventListener("keydown", (e) => { if (e.key === "Enter") doRegister(); });
+
+    showRegisterLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        authError.classList.add("hidden");
+        loginForm.classList.add("hidden");
+        registerForm.classList.remove("hidden");
+    });
+
+    showLoginLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        authError.classList.add("hidden");
+        registerForm.classList.add("hidden");
+        loginForm.classList.remove("hidden");
+    });
+
+    logoutBtn.addEventListener("click", doLogout);
+}
+
+function bindAppEvents() {
     uploadForm.addEventListener("submit", handleUploadSubmit);
 
     playBtn.addEventListener("click", playCurrentChapter);
-
     stopBtn.addEventListener("click", stopSpeech);
 
     prevBtn.addEventListener("click", () => {
@@ -649,10 +793,18 @@ function initSpeech() {
     }
 }
 
+// ── Boot ──────────────────────────────────────────────────────────────────────
 async function initApp() {
-    bindEvents();
-    initSpeech();
-    await refreshLibrary();
+    bindAuthEvents();
+    bindAppEvents();
+
+    if (authToken) {
+        showApp();
+        initSpeech();
+        await refreshLibrary();
+    } else {
+        showAuth();
+    }
 }
 
 document.addEventListener("DOMContentLoaded", () => {

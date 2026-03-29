@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from backend.app.api.auth import router as auth_router
 from backend.app.api.books import router as books_router
 from backend.app.api.upload import router as upload_router
 from backend.app.database import init_db
@@ -40,6 +41,7 @@ app.mount("/book-assets", StaticFiles(directory=str(BOOK_ASSETS_DIR)), name="boo
 
 templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
 
+app.include_router(auth_router)
 app.include_router(upload_router)
 app.include_router(books_router)
 

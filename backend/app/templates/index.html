@@ -8,58 +8,91 @@
     <link rel="stylesheet" href="/static/style.css" />
   </head>
   <body>
-    <div class="card">
-      <h1>Lectorium</h1>
-      <p>A self-hosted EPUB reader with audio narration.</p>
+
+    <!-- Auth screen (shown when logged out) -->
+    <div id="auth-screen">
+      <div class="card auth-card">
+        <h1>Lectorium</h1>
+        <p class="muted">A self-hosted EPUB reader with audio narration.</p>
+
+        <div id="auth-error" class="auth-error hidden"></div>
+
+        <div id="login-form">
+          <h2>Sign in</h2>
+          <input id="login-username" type="text" placeholder="Username" autocomplete="username" />
+          <input id="login-password" type="password" placeholder="Password" autocomplete="current-password" />
+          <button id="login-btn" class="primary" type="button">Sign in</button>
+          <p class="muted">No account yet? <a href="#" id="show-register">Register</a></p>
+        </div>
+
+        <div id="register-form" class="hidden">
+          <h2>Create account</h2>
+          <input id="reg-username" type="text" placeholder="Username" autocomplete="username" />
+          <input id="reg-password" type="password" placeholder="Password" autocomplete="new-password" />
+          <button id="register-btn" class="primary" type="button">Register</button>
+          <p class="muted">Already have an account? <a href="#" id="show-login">Sign in</a></p>
+        </div>
+      </div>
     </div>
 
-    <div class="card">
-      <h2>Upload an EPUB</h2>
-      <form id="upload-form" enctype="multipart/form-data">
-        <input id="upload-file" type="file" name="file" accept=".epub" required />
-        <button class="primary" type="submit">Upload</button>
-      </form>
-      <div id="upload-status" class="muted"></div>
-    </div>
+    <!-- Main app (shown when logged in) -->
+    <div id="app-screen" class="hidden">
 
-    <div class="layout">
-      <div class="card">
-        <h2>Library</h2>
-        <div id="library" class="library-list">
-          <p class="muted">No books uploaded yet.</p>
+      <div class="card app-header">
+        <h1>Lectorium</h1>
+        <div class="user-bar">
+          <span id="username-display" class="muted"></span>
+          <button id="logout-btn" type="button">Sign out</button>
         </div>
       </div>
 
       <div class="card">
-        <h2 id="book-title">Select a book</h2>
-        <div class="controls">
-          <button id="prev-btn" type="button">Prev</button>
-          <button id="next-btn" type="button">Next</button>
-          <button id="play-btn" class="primary" type="button">Play</button>
-          <button id="stop-btn" type="button">Stop</button>
-          <label for="language-select">Language</label>
-          <select id="language-select">
-            <option value="de">DE</option>
-            <option value="en" selected>EN</option>
-            <option value="es">ES</option>
-            <option value="fr">FR</option>
-            <option value="it">IT</option>
-            <option value="nl">NL</option>
-            <option value="pt">PT</option>
-            <option value="all">All</option>
-          </select>
-          <label for="voice-select">Voice</label>
-          <select id="voice-select"></select>
-          <div class="control-group">
-            <label for="rate-input">Rate</label>
-            <input id="rate-input" type="range" min="0.5" max="2" step="0.1" value="1" />
+        <h2>Upload an EPUB</h2>
+        <form id="upload-form" enctype="multipart/form-data">
+          <input id="upload-file" type="file" name="file" accept=".epub" required />
+          <button class="primary" type="submit">Upload</button>
+        </form>
+        <div id="upload-status" class="muted"></div>
+      </div>
+
+      <div class="layout">
+        <div class="card">
+          <h2>Library</h2>
+          <div id="library" class="library-list">
+            <p class="muted">No books uploaded yet.</p>
           </div>
         </div>
-        <div id="reader" class="reader-box"></div>
-      </div>
-    </div>
 
-    <p>Health endpoint: <a href="/health"><code>/health</code></a></p>
+        <div class="card">
+          <h2 id="book-title">Select a book</h2>
+          <div class="controls">
+            <button id="prev-btn" type="button">Prev</button>
+            <button id="next-btn" type="button">Next</button>
+            <button id="play-btn" class="primary" type="button">Play</button>
+            <button id="stop-btn" type="button">Stop</button>
+            <label for="language-select">Language</label>
+            <select id="language-select">
+              <option value="de">DE</option>
+              <option value="en" selected>EN</option>
+              <option value="es">ES</option>
+              <option value="fr">FR</option>
+              <option value="it">IT</option>
+              <option value="nl">NL</option>
+              <option value="pt">PT</option>
+              <option value="all">All</option>
+            </select>
+            <label for="voice-select">Voice</label>
+            <select id="voice-select"></select>
+            <div class="control-group">
+              <label for="rate-input">Rate</label>
+              <input id="rate-input" type="range" min="0.5" max="2" step="0.1" value="1" />
+            </div>
+          </div>
+          <div id="reader" class="reader-box"></div>
+        </div>
+      </div>
+
+    </div>
 
     <script src="/static/app.js"></script>
   </body>
